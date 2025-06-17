@@ -14,18 +14,17 @@
           config.allowUnfree = true;
         };
 
-        # Vendor Caffe manually to avoid internal git clone
+        # Fetch Caffe and vendor it manually
         caffeSrc = pkgs.fetchFromGitHub {
           owner = "BVLC";
           repo = "caffe";
-          rev = "1.0"; # or specific commit OpenPose expects
-          sha256 = "sha256-mzNzY5lAcZMuZhEtBOB7Edx7kXZunr+yVcA5quhr4M8="; # replace with correct hash
+          rev = "1.0"; # Replace with correct revision
+          hash = "sha256-Q6aWb5ck6gp/bbUMr/l6/hxqpNUPHngbG3EIVNm4koA=";
         };
 
         openpose = pkgs.stdenv.mkDerivation rec {
           pname = "openpose";
           version = "1.7.0";
-
           src = ./.;
 
           nativeBuildInputs = with pkgs; [
@@ -41,10 +40,8 @@
             glog
             gflags
             protobufc
-            # Remove cudaPackages.cudnn if CPU-only
           ];
 
-          # Override the submodule Caffe directory before CMake runs
           preConfigure = ''
             echo "Vendoring Caffe into 3rdparty/caffe"
             rm -rf 3rdparty/caffe
