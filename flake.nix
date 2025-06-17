@@ -1,5 +1,5 @@
 {
-  description = "Flake to build OpenPose from source (CPU-only)";
+  description = "Flake to build OpenPose (CPU-only) with vendored Caffe";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
@@ -14,16 +14,19 @@
           config.allowUnfree = true;
         };
 
+        # Vendor Caffe manually to avoid internal git clone
+        caffeSrc = pkgs.fetchFromGitHub {
+          owner = "BVLC";
+          repo = "caffe";
+          rev = "1.0"; # or specific commit OpenPose expects
+          sha256 = "sha256-mzNzY5lAcZMuZhEtBOB7Edx7kXZunr+yVcA5quhr4M8="; # replace with correct hash
+        };
+
         openpose = pkgs.stdenv.mkDerivation rec {
           pname = "openpose";
           version = "1.7.0";
 
-          src = pkgs.fetchFromGitHub {
-            owner = "CMU-Perceptual-Computing-Lab";
-            repo = "openpose";
-            rev = "e8cb03fa27699187169f9fa84bb6c7c9b8b9270e"; # Stable CPU-only commit
-            sha256 = "sha256-Pv1+e9bnF6IV9glxvZGWKhO9YSeDP0NSeJGiDW9us+Y=";
-          };
+          src = ./.;
 
           nativeBuildInputs = with pkgs; [
             cmake
@@ -38,8 +41,15 @@
             glog
             gflags
             protobufc
-            cudaPackages.cudnn # REMOVE this line if you're not compiling CUDA at all
+            # Remove cudaPackages.cudnn if CPU-only
           ];
+
+          # Override the submodule Caffe directory before CMake runs
+          preConfigure = ''
+            echo "Vendoring Caffe into 3rdparty/caffe"
+            rm -rf 3rdparty/caffe
+            cp -r ${caffeSrc} 3rdparty/caffe
+          '';
 
           cmakeFlags = [
             "-DBUILD_CAFFE=ON"
